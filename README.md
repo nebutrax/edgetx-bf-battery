@@ -1,0 +1,67 @@
+# EdgeTX BF Battery
+
+Two EdgeTX Lua scripts for black-and-white 128×64 radios (RadioMaster Boxer etc.) flying Betaflight quads over ExpressLRS / Crossfire:
+
+- **BF Battery** (`BFBatt.lua`, Tools script): switch Betaflight battery cell-voltage thresholds between **LiPo / LiHV / Li-ion** from the radio, over MSP-over-CRSF. No Configurator needed.
+- **Low Battery Alarm** (`lowbat.lua`, telemetry script): per-cell low-voltage alarm with a short hold delay to ignore throttle sag, active only while armed. Also shows the GPS satellite count.
+
+## Install
+
+Copy the `SCRIPTS` folder to the root of the radio's SD card:
+
+```
+/SCRIPTS/TOOLS/BFBatt.lua
+/SCRIPTS/TELEMETRY/lowbat.lua
+```
+
+Then enable the alarm: **MODEL → DISPLAY → Screen 1 → Script → lowbat**. Telemetry scripts only run in the background once they are assigned to a screen.
+
+When updating, delete any old `.luac` files next to the scripts so the radio doesn't keep running the previously compiled version.
+
+## BF Battery (Tools)
+
+**SYS → Tools → BF Battery**. The quad must be powered, linked with telemetry on, and **disarmed**.
+
+| Profile | min | warn | max |
+|---|---|---|---|
+| LiPo   | 3.30 | 3.50 | 4.30 |
+| LiHV   | 3.40 | 3.60 | 4.35 |
+| Li-ion | 2.90 | 3.10 | 4.20 |
+
+- Scroll to a profile and press **ENTER** to write it to Betaflight. The script saves to EEPROM, reads the values back to check them, then stores min/warn in **GV8/GV9** for the alarm.
+- `FC x/y/z` shows what Betaflight currently has. `*` marks the matching profile.
+- `R x.xx` is the radio-side alarm threshold (GV9).
+- **Settings >** lets you edit the profile voltages and the alarm options. Pressing RTN saves them to `/SCRIPTS/BFBatt.cfg`. After editing voltages, re-apply the profile.
+
+The bottom-right corner shows the link status while the script waits for the quad:
+
+| Shown | Meaning |
+|---|---|
+| `noCRSF` | No CRSF/ELRS module active on this model |
+| `noTLM` | No telemetry from the quad |
+| `t3` | Waiting for the reply to attempt 3 |
+| `t3b` | Radio output buffer busy |
+
+Requires Betaflight 4.0 or newer.
+
+## Low Battery Alarm (telemetry)
+
+- Reads a per-cell voltage sensor (RxBt by default, or Auto picks the first of Cels / Cell / VCel / RxBt). A multi-cell sensor uses its lowest cell.
+- **Warn** (below GV9 for the hold time): one beep, plus vibration, repeated every 5 s.
+- **Critical** (below GV8 for the hold time): three quick beeps every 1 s.
+- **Hold delay** 0.5 s by default, adjustable in 0.1 s steps, so short sag under high throttle doesn't trigger the alarm.
+- Only active while the arm switch is on (default **SA down**). It can also be set to "Always".
+- Settings are reloaded each time the quad connects.
+- On the telemetry screen, **ENTER** plays a test beep.
+- **Sats** shows the GPS satellite count, inverted below 6.
+
+Until a profile has been applied, the alarm uses 3.50 / 3.30 V. If you already use GV8/GV9 for something else, change `GV_MIN` / `GV_WARN` in both scripts.
+
+## Notes
+
+- ELRS module settings (packet rate, telemetry ratio, bind phrase) live in the module itself and are not part of these scripts.
+- Tested on a RadioMaster Boxer with EdgeTX and ELRS.
+
+## License
+
+MIT
