@@ -44,6 +44,7 @@ When updating, delete any old `.luac` files next to the scripts so the radio doe
 - Scroll to a profile and press **ENTER** to write it to Betaflight. The script saves to EEPROM, reads the values back to check them, then stores min/warn in **GV8/GV9** for the alarm.
 - `FC x/y/z` shows what Betaflight currently has. `*` marks the matching profile.
 - `R x.xx` is the radio-side alarm threshold (GV9).
+- On open, the script also reads Betaflight's GPS Rescue minimum satellites (`gps_rescue_min_sats`) and stores it in **GV7**. The status line then shows `Sats>=8`. If the FC has no GPS Rescue, this step is skipped.
 - **Settings >** lets you edit the profile voltages and the alarm options. Pressing RTN saves them to `/SCRIPTS/BFBatt.cfg`. After editing voltages, re-apply the profile.
 
 The bottom-right corner shows the link status while the script waits for the quad:
@@ -66,9 +67,14 @@ Requires Betaflight 4.0 or newer.
 - Only active while the arm switch is on (default **SA down**). It can also be set to "Always".
 - Settings are reloaded each time the quad connects.
 - On the telemetry screen, **ENTER** plays a test beep.
-- **Sats** shows the GPS satellite count, inverted below 6.
+- **Sats** shows the GPS satellite count:
+  - `Sats 9 OK`: at or above the minimum.
+  - `Sats 4<8`: below the minimum, shown inverted.
+  - `Sats --`: no GPS sensor.
 
-Until a profile has been applied, the alarm uses 3.50 / 3.30 V. If you already use GV8/GV9 for something else, change `GV_MIN` / `GV_WARN` in both scripts.
+  The minimum is Betaflight's `gps_rescue_min_sats`, read by BF Battery into GV7. Open BF Battery once per model with the quad connected; the value is stored per model. Until then the minimum is 6.
+
+Until a profile has been applied, the alarm uses 3.50 / 3.30 V. If you already use GV7/GV8/GV9 for something else, change `GV_SATS` / `GV_MIN` / `GV_WARN` in both scripts.
 
 ## Notes
 

@@ -4,6 +4,7 @@
 -- Install: /SCRIPTS/TOOLS/BFBatt.lua  -> SYS > Tools > "BF Battery"
 -- Quad must be powered, linked, telemetry on, and DISARMED.
 -- Active min/warn go to GV8/GV9 (for lowbat.lua). Settings file: /SCRIPTS/BFBatt.cfg
+-- GPS Rescue min sats (gps_rescue_min_sats) is read on open and stored in GV7 (for lowbat.lua).
 -- Menu: wheel = select, ENTER = apply profile. "Settings >" edits profiles + lowbat alarm.
 
 local CFG = "/SCRIPTS/BFBatt.cfg"
@@ -21,6 +22,7 @@ local S = { hold = 5, wrep = 5, crep = 1, hapt = 1, voice = 0, sensor = "RxBt", 
 local MSP_BATTERY_CONFIG     = 32
 local MSP_SET_BATTERY_CONFIG = 33
 local MSP_EEPROM_WRITE       = 250
+local MSP_GPS_RESCUE         = 135   -- byte 16 = minSats (unchanged since BF 4.1)
 
 local ADDR_FC, ADDR_RADIO = 0xC8, 0xEA
 local FT_REQ, FT_RESP, FT_WRITE = 0x7A, 0x7B, 0x7C
@@ -28,12 +30,14 @@ local TX_CHUNK = 8     -- MSP bytes per CRSF frame (incl. status byte)
 local TIMEOUT  = 250   -- 2.5 s per try (getTime() = 10 ms ticks); ELRS Std telem ratio is slow
 local RETRIES  = 5     -- for writes; reads retry until you press EXIT
 local GV_MIN, GV_WARN = 7, 8   -- 0-based (7 = GV8, 8 = GV9)
+local GV_SATS = 6              -- 0-based (6 = GV7): GPS Rescue min sats
 local ROWS = 7
 
 local page, sel, state, msg = "main", 1, "read", "Reading FC..."
 local cfg, cur, target = nil, nil, nil
 local ITEMS, LISTS = {}, { sensor = { "Auto" }, arm = { "Always" } }
 local si, top, edit, old, dirty, dirtyP = 1, 1, false, nil, false, false
+local gpsAsked, gpsMin = false, nil
 
 -- TX state
 local txBuf, txIdx, txCrc, txType, txPending, seq = {}, 1, 0, FT_REQ, false, 0
@@ -143,6 +147,7 @@ end
 
 local function sizeOk(cmd, n)                   -- BF <= 4.2 replies carry no cmd byte:
   if cmd == MSP_BATTERY_CONFIG then return n >= 7 end   -- reject late duplicates by size
+  if cmd == MSP_GPS_RESCUE then return n >= 16 end
   return n == 0
 end
 
@@ -196,7 +201,19 @@ local function setPayload(p)
   return d
 end
 
+local function readyMsg()
+  return gpsMin and ("ENTER = apply  Sats>=" .. gpsMin) or "ENTER = apply"
+end
+
 local function onReply(cmd, d, err)
+  if lastCmd == MSP_GPS_RESCUE then              -- no GPS Rescue in this build: just skip
+    if not err and cmd == MSP_GPS_RESCUE and d[16] and d[16] > 0 then
+      gpsMin = d[16]
+      model.setGlobalVariable(GV_SATS, 0, gpsMin)
+    end
+    state, msg = "idle", readyMsg()
+    return
+  end
   if err then state, msg = "idle", "FC error (armed?)"; return end
   if cmd == MSP_BATTERY_CONFIG then
     if #d < 13 then state, msg = "idle", "BF too old (<4.0)"; return end
@@ -213,7 +230,13 @@ local function onReply(cmd, d, err)
       if sel <= #PROFILES then                   -- don't move cursor off "Settings"
         for i, p in ipairs(PROFILES) do if same(p) then sel = i end end
       end
-      msg = "ENTER = apply"
+      msg = readyMsg()
+      if not gpsAsked then                       -- once per open: GPS Rescue min sats
+        gpsAsked = true
+        state, msg = "gps", "Reading GPS..."
+        send(MSP_GPS_RESCUE, {}, false)
+        return
+      end
     end
     state = "idle"
   elseif cmd == MSP_SET_BATTERY_CONFIG then
@@ -369,7 +392,9 @@ local function run(event)
     if c then
       onReply(c, d, e)
     elseif getTime() - lastSend > TIMEOUT then
-      if tries >= RETRIES and lastCmd ~= MSP_BATTERY_CONFIG then
+      if tries >= RETRIES and lastCmd == MSP_GPS_RESCUE then
+        state, msg = "idle", readyMsg()         -- GPS read is optional
+      elseif tries >= RETRIES and lastCmd ~= MSP_BATTERY_CONFIG then
         state, msg = "idle", "No reply - telem?"
       else
         resend()

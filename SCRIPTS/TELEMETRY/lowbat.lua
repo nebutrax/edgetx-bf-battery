@@ -1,4 +1,4 @@
--- lowbat.lua v7  EdgeTX telemetry script: low cell-voltage alarm, no logical switches needed.
+-- lowbat.lua v8  EdgeTX telemetry script: low cell-voltage alarm, no logical switches needed.
 -- Install: /SCRIPTS/TELEMETRY/lowbat.lua
 -- Enable:  MODEL > DISPLAY (telemetry screens) > Screen 1: Script > lowbat
 -- Thresholds: GV8 (min) / GV9 (warn) in 0.01 V, set when a profile is applied in BF Battery.
@@ -10,7 +10,8 @@ local CFG = "/SCRIPTS/BFBatt.cfg"
 local CANDIDATES = { "Cels", "Cell", "VCel", "RxBt" }   -- used when sensor = Auto
 local GV_MIN, GV_WARN = 7, 8          -- 0-based (7 = GV8, 8 = GV9)
 local DEF_MIN, DEF_WARN = 330, 350    -- used if GVs are empty
-local SATS_MIN = 6                    -- sat count shown inverted below this
+local GV_SATS = 6                     -- 0-based (6 = GV7): min sats from BF GPS Rescue (BF Battery)
+local SATS_MIN = 6                    -- min sats used if GV7 is empty
 -- hold = alarm delay in seconds (filters throttle sag); arm = "Always" or e.g. "SA down"
 local S = { hold = 0.5, wrep = 5, crep = 1, hapt = 1, voice = 0, sensor = "RxBt", arm = "SA down" }
 
@@ -136,7 +137,7 @@ local function run(event)
     testUntil = getTime() + 100
   end
   lcd.clear()
-  lcd.drawText(1, 0, "Low Battery Alarm v7", SMLSIZE + INVERS)
+  lcd.drawText(1, 0, "Low Battery Alarm v8", SMLSIZE + INVERS)
   if getTime() < testUntil then lcd.drawText(100, 0, "TEST", SMLSIZE + INVERS) end
   if not sensor then
     lcd.drawText(2, 14, linked and "No cell sensor" or "No telemetry", 0)
@@ -157,9 +158,16 @@ local function run(event)
   else
     local sats = getFieldInfo("Sats") and val("Sats")           -- GPS satellites (CRSF "Sats")
     if type(sats) == "number" then
-      lcd.drawText(80, 27, "Sats " .. math.floor(sats), SMLSIZE + ((sats < SATS_MIN) and INVERS or 0))
+      local need = model.getGlobalVariable(GV_SATS, 0)
+      if not need or need <= 0 then need = SATS_MIN end
+      sats = math.floor(sats)
+      if sats >= need then
+        lcd.drawText(74, 27, "Sats " .. sats .. " OK", SMLSIZE)
+      else
+        lcd.drawText(74, 27, "Sats " .. sats .. "<" .. need, SMLSIZE + INVERS)
+      end
     else
-      lcd.drawText(80, 27, "Sats --", SMLSIZE)
+      lcd.drawText(74, 27, "Sats --", SMLSIZE)
     end
   end
   return 0
