@@ -16,6 +16,19 @@ Copy the `SCRIPTS` folder to the root of the radio's SD card:
 
 Then enable the alarm: **MODEL → DISPLAY → Screen 1 → Script → lowbat**. Telemetry scripts only run in the background once they are assigned to a screen.
 
+### Betaflight: send per-cell voltage
+
+The alarm expects a **per-cell** voltage. By default Betaflight sends the total pack voltage in the CRSF battery sensor (**RxBt** on the radio). Switch it to the average cell voltage in the Betaflight CLI:
+
+```
+set report_cell_voltage = ON
+save
+```
+
+Then go to **MODEL → TELEMETRY → Discover new sensors** on the radio. RxBt should now read about 3.5–4.35 V instead of the pack voltage.
+
+CRSF sends this value in 0.1 V steps, so the alarm sees, for example, 3.4 / 3.5 / 3.6 V. Thresholds like 3.45 are effectively rounded.
+
 When updating, delete any old `.luac` files next to the scripts so the radio doesn't keep running the previously compiled version.
 
 ## BF Battery (Tools)
