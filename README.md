@@ -55,7 +55,7 @@ When updating, delete any old `.luac` files next to the scripts so the radio doe
 
 - Scroll to a profile and press **ENTER** to write it to Betaflight. The script saves to EEPROM, reads the values back to check them, then stores min/warn in **GV8/GV9** for the alarm.
 - `FC x/y/z` shows what Betaflight currently has. `*` marks the matching profile.
-- `R x.xx` is the radio-side alarm threshold (GV9).
+- `R x.xx` is the radio-side alarm threshold (GV9). On open, if Betaflight's warn/min differ from GV9/GV8 (for example after a change in Configurator), they are copied to the radio and the status line shows `R synced to FC`.
 - On open, the script also reads Betaflight's GPS Rescue minimum satellites (`gps_rescue_min_sats`) and stores it in **GV7**. The status line then shows `Sats>=8`. If the FC has no GPS Rescue, this step is skipped.
 - **Settings >** lets you edit the profile voltages and the alarm options. Pressing RTN saves them to `/SCRIPTS/BFBatt.cfg`. After editing voltages, re-apply the profile.
 
@@ -78,6 +78,7 @@ Requires Betaflight 4.0 or newer.
 - **Hold delay** 0.5 s by default, adjustable in 0.1 s steps, so short sag under high throttle doesn't trigger the alarm.
 - Only active while the arm switch is on (default **SA down**). It can also be set to "Always".
 - Settings are reloaded each time the quad connects.
+- **FC check:** once per connection, about 2 s after the quad links and only while disarmed, the script reads Betaflight's battery thresholds and updates GV8/GV9 if they differ. The header shows `FC check...`, then `FC synced`, or `FC no reply` after 5 tries. If you arm first, it waits until you disarm. Nothing is sent while armed.
 - On the telemetry screen, **ENTER** plays a test beep.
 - **Sats** shows the GPS satellite count:
   - `Sats 9 OK`: at or above the minimum.

@@ -201,7 +201,10 @@ local function setPayload(p)
   return d
 end
 
+local rSynced = false
+
 local function readyMsg()
+  if rSynced then return "R synced to FC" end
   return gpsMin and ("ENTER = apply  Sats>=" .. gpsMin) or "ENTER = apply"
 end
 
@@ -230,6 +233,10 @@ local function onReply(cmd, d, err)
       if sel <= #PROFILES then                   -- don't move cursor off "Settings"
         for i, p in ipairs(PROFILES) do if same(p) then sel = i end end
       end
+      -- keep the radio alarm (GV8/GV9) in step with whatever the FC actually has
+      local differs = model.getGlobalVariable(GV_WARN, 0) ~= cur.warn
+                   or model.getGlobalVariable(GV_MIN, 0) ~= cur.min
+      if cur.min < cur.warn and differs then setGV(cur); rSynced = true end
       msg = readyMsg()
       if not gpsAsked then                       -- once per open: GPS Rescue min sats
         gpsAsked = true
