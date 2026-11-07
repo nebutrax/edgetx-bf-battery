@@ -27,6 +27,18 @@ save
 
 Then go to **MODEL → TELEMETRY → Discover new sensors** on the radio. RxBt should now read about 3.5–4.35 V instead of the pack voltage.
 
+### Betaflight: force the cell count
+
+Betaflight guesses the cell count from the pack voltage when you plug in. The guess can be wrong, for example with a half-discharged pack, a storage-charged pack or a fully charged LiHV. A wrong count makes the per-cell voltage (and so every warning) wrong. If you always fly the same cell count, fix it:
+
+```
+get force_battery_cell_count
+set force_battery_cell_count = 1
+save
+```
+
+Use your pack's cell count (1 for 1S, 4 for 4S…). `0` restores auto-detection. If `get` returns nothing, your Betaflight version doesn't have this setting.
+
 CRSF sends this value in 0.1 V steps, so the alarm sees, for example, 3.4 / 3.5 / 3.6 V. Thresholds like 3.45 are effectively rounded.
 
 When updating, delete any old `.luac` files next to the scripts so the radio doesn't keep running the previously compiled version.
